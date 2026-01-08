@@ -38,8 +38,11 @@
 
         .nav-buttons {
             display: flex;
-            justify-content: center;
-            gap: 1rem;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
         }
 
         .btn {
@@ -52,6 +55,86 @@
             transition: all 0.3s ease;
             background-color: #e0e0e0;
             color: var(--text-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        /* Screen Transitions */
+        .screen {
+            display: none;
+            opacity: 0;
+            transform: scale(0.96); /* Start slightly zoomed out */
+        }
+
+        .screen.active {
+            display: block;
+            animation: softZoomIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; /* "Out Quint" feel for softness */
+        }
+
+        @keyframes softZoomIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.96);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* Input Button (Left, Oval, Text + Icon) */
+        .btn-input {
+            width: auto;
+            height: auto;
+            padding: 0.8rem 1.5rem;
+            border-radius: 30px; /* Oval shape */
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            background: #fff;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            font-size: 1rem;
+            color: var(--text-color);
+        }
+
+        .btn-input svg {
+            width: 24px;
+            height: 24px;
+            fill: var(--text-color);
+            transition: fill 0.3s ease;
+        }
+
+        .btn-input.active {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-input.active svg {
+            fill: white;
+        }
+        
+        .btn-input:hover {
+            transform: scale(1.05);
+            border-color: var(--primary-color);
+        }
+
+        /* Stats Button (Center, Wide, Highlighted) */
+        .btn-stats {
+            flex-grow: 1;
+            max-width: 200px;
+            margin: 0 auto; /* Center in remaining space */
+            background-color: var(--primary-color);
+            color: white;
+            box-shadow: 0 4px 8px rgba(74, 144, 226, 0.4);
+            font-size: 1.1rem;
+            transform: translateX(-25px); /* Offset for the left button width to appear truly centered */
         }
 
         .btn.active {
@@ -59,9 +142,20 @@
             color: white;
             box-shadow: 0 2px 4px rgba(74, 144, 226, 0.3);
         }
+        
+        /* Specific active state for stats button to keep its style */
+        .btn-stats.active {
+            background-color: #357abd; /* Darker shade */
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
 
-        .btn:hover:not(.active) {
-            background-color: #d0d0d0;
+       
+        
+        .btn-stats:hover {
+            transform: translateX(-25px) scale(1.05); /* Keep offset, add scale, no Y-shift */
+            /* Background remains same, just shadow/scale */
+            box-shadow: 0 6px 12px rgba(74, 144, 226, 0.5);
+            /* filter: brightness(1.1); - removed to prevent color change */
         }
 
         main {
@@ -179,18 +273,20 @@
             box-shadow: var(--shadow);
             margin-bottom: 1.5rem;
             display: flex;
-            flex-wrap: wrap;
+            flex-direction: column; /* Default stack on mobile */
             gap: 1rem;
-            justify-content: center;
-            align-items: center;
+            align-items: stretch;
         }
         
         .chart-display-area {
             background: var(--card-bg);
-            padding: 1.5rem;
+            padding: 2rem; /* Increased padding */
             border-radius: var(--border-radius);
             box-shadow: var(--shadow);
-            min-height: 400px;
+            min-height: 550px; /* Increased height */
+            position: relative;
+            overflow: visible; /* Ensure outside labels aren't clipped */
+            margin-top: 1.5rem; /* Separate from controls */
         }
 
         .hidden {
@@ -202,6 +298,31 @@
             .input-grid {
                 grid-template-columns: 1fr 1fr;
             }
+            
+            .chart-controls-container {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+                align-items: center;
+            }
+            
+            select {
+                width: auto; /* Auto width on desktop */
+                min-width: 150px;
+            }
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 599px) {
+            select {
+                width: 100%; /* Full width on mobile */
+                font-size: 16px; /* Prevent zoom on iOS */
+            }
+            
+            .btn-stats {
+                 /* On very small screens, maybe adjust margin/transform if needed, but current centered approach should hold */
+                 font-size: 1rem;
+            }
         }
     </style>
 </head>
@@ -209,8 +330,16 @@
 
 <header>
     <div class="nav-buttons">
-        <button class="btn active" onclick="switchScreen('input')">Ввод данных</button>
-        <button class="btn" onclick="switchScreen('charts')">Диаграммы</button>
+        <button class="btn btn-input active" onclick="switchScreen('input')" title="Ввод данных">
+            <span>Ввод</span>
+            <!-- Meter/Code Icon -->
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4 6C4 4.89543 4.89543 4 6 4H18C19.1046 4 20 4.89543 20 6V18C20 19.1046 19.1046 20 18 20H6C4.89543 20 4 19.1046 4 18V6Z" stroke="currentColor" stroke-width="2" fill="none"/>
+                <path d="M8 9H10M12 9H14M12 15H14M8 15H10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                <rect x="7" y="8" width="10" height="8" rx="1" stroke="currentColor" stroke-width="1.5" fill="none" opacity="0.3"/>
+            </svg>
+        </button>
+        <button class="btn btn-stats" onclick="switchScreen('charts')">Статистика 📊</button>
     </div>
 </header>
 
@@ -510,20 +639,29 @@
         });
     }
 
-    // --- Charts Screen UI ---
-
+    // --- Navigation Logic ---
     function switchScreen(screenName) {
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        document.querySelectorAll('header .btn').forEach(b => b.classList.remove('active'));
+        const inputScreen = document.getElementById('input-screen');
+        const chartsScreen = document.getElementById('charts-screen');
+        const inputBtn = document.querySelector('.btn-input');
+        const statsBtn = document.querySelector('.btn-stats');
 
-        document.getElementById(screenName + '-screen').classList.add('active');
-        
-        // Highlight button
-        const btnIndex = screenName === 'input' ? 0 : 1;
-        document.querySelectorAll('header .btn')[btnIndex].classList.add('active');
-
-        if (screenName === 'charts') {
-            renderCurrentChart();
+        if (screenName === 'input') {
+            inputScreen.classList.add('active');
+            chartsScreen.classList.remove('active');
+            inputBtn.classList.add('active');
+            statsBtn.classList.remove('active');
+            
+            // Remove display none after animation if needed, but CSS handles .active = block
+            // However, we need to ensure the other is hidden. 
+            // CSS: .screen { display: none } .screen.active { display: block }
+            // This works.
+        } else {
+            inputScreen.classList.remove('active');
+            chartsScreen.classList.add('active');
+            inputBtn.classList.remove('active');
+            statsBtn.classList.add('active');
+            updateChartUI();
         }
     }
 
@@ -580,41 +718,93 @@
 
         // --- Visual Configurations ---
         const tooltipConfig = {
-            enabled: true,
-            backgroundColor: 'rgba(33, 33, 33, 0.95)',
-            titleFont: { size: 16, family: "'Segoe UI', sans-serif", weight: '600' },
-            bodyFont: { size: 14, family: "'Segoe UI', sans-serif" },
-            padding: 12,
-            cornerRadius: 8,
-            displayColors: true,
-            boxPadding: 6,
-            caretPadding: 6,
-            caretSize: 8,
-            animation: { duration: 150 }
+            enabled: false // Disable tooltips completely as requested
         };
 
         const pieHoverOptions = {
-            hoverOffset: 20,
-            hoverBorderWidth: 0
+            hoverOffset: 50, // Massive pop-out effect
+            hoverBorderWidth: 4,
+            hoverBorderColor: 'rgba(255, 255, 255, 0.9)'
         };
 
         // --- Datalabels Configuration ---
         const pieLabels = {
-            color: '#fff',
-            font: { weight: 'bold', size: 14 },
-            formatter: (value) => value > 0 ? Math.round(value) : ''
+            // All values are now black for maximum contrast
+            color: '#000',
+            font: function(context) {
+                // Dynamic font sizing
+                const width = context.chart.width;
+                const size = Math.round(width / 22); // Base responsive size
+                
+                const dataset = context.chart.data.datasets[context.datasetIndex];
+                const total = dataset.data.reduce((a, b) => a + b, 0);
+                const value = dataset.data[context.dataIndex];
+                const percentage = total > 0 ? (value / total) * 100 : 0;
+
+                // Decrease size if sector is small but inside, or keep normal if outside
+                // If < 8% -> outside, standard size
+                if (percentage < 8) {
+                     return { weight: 'bold', size: Math.max(12, size * 0.8), family: "'Segoe UI', sans-serif" };
+                }
+                return { weight: 'bold', size: Math.max(14, size), family: "'Segoe UI', sans-serif" };
+            },
+            formatter: (value) => value > 0 ? Math.round(value) : '',
+            
+            // Positioning Logic
+            anchor: function(context) {
+                const dataset = context.chart.data.datasets[context.datasetIndex];
+                const total = dataset.data.reduce((a, b) => a + b, 0);
+                const value = dataset.data[context.dataIndex];
+                const percentage = total > 0 ? (value / total) * 100 : 0;
+                return percentage < 8 ? 'end' : 'center'; // Outside if small
+            },
+            align: function(context) {
+                const dataset = context.chart.data.datasets[context.datasetIndex];
+                const total = dataset.data.reduce((a, b) => a + b, 0);
+                const value = dataset.data[context.dataIndex];
+                const percentage = total > 0 ? (value / total) * 100 : 0;
+                return percentage < 8 ? 'end' : 'center'; // Push further out if small
+            },
+            offset: function(context) {
+                const dataset = context.chart.data.datasets[context.datasetIndex];
+                const total = dataset.data.reduce((a, b) => a + b, 0);
+                const value = dataset.data[context.dataIndex];
+                const percentage = total > 0 ? (value / total) * 100 : 0;
+                return percentage < 8 ? 10 : 0; // Distance from edge
+            },
+            
+            display: function(context) {
+                // Hide if 0
+                return context.dataset.data[context.dataIndex] > 0 ? 'auto' : false;
+            },
+            
+            textShadowBlur: 0, 
+            textShadowColor: 'transparent'
         };
 
         const barLabels = {
-            anchor: 'center',
-            align: 'center',
-            rotation: -90,
-            color: (ctx) => {
-                const color = ctx.dataset.backgroundColor;
-                return (color === '#FFCD56') ? '#333' : '#fff';
+            anchor: 'end',
+            align: function(context) {
+                const value = context.dataset.data[context.dataIndex];
+                const max = Math.max(...context.dataset.data);
+                if (value < max * 0.15) return 'end'; 
+                return 'start'; 
             },
-            font: { weight: 'bold' },
-            formatter: (value) => value > 0 ? Math.round(value) : ''
+            rotation: -90,
+            color: '#000', // Changed to black
+            font: { weight: 'bold', size: 14 },
+            formatter: (value) => value > 0 ? Math.round(value) : '',
+            offset: 4 
+        };
+        
+        // Animation config for labels (simple fade/scale via standard animation)
+        const commonOptions = {
+            animation: {
+                duration: 800,
+                easing: 'easeOutQuart'
+            },
+            layout: { padding: { top: 60, left: 20, right: 20, bottom: 20 } }, // Increased top padding (from 30 to 60)
+            maintainAspectRatio: false, 
         };
 
         let config = {};
@@ -635,15 +825,19 @@
                     datasets: [{
                         data: [totals.gas, totals.coldWater, totals.hotWater, totals.electricity],
                         backgroundColor: Object.values(RESOURCE_COLORS),
+                        borderRadius: 10, // Round corners for sectors
+                        borderWidth: 2,
+                        borderColor: '#fff',
                         ...pieHoverOptions
                     }]
                 },
                 options: {
-                    layout: { padding: 20 },
+                    ...commonOptions,
                     plugins: { 
-                        title: { display: true, text: `Годовые расходы за ${year} г.` },
+                        title: { display: false, text: `Годовые расходы за ${year} г.`, font: { size: 16 } },
                         datalabels: pieLabels,
-                        tooltip: tooltipConfig
+                        tooltip: tooltipConfig,
+                        legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } }
                     }
                 }
             };
@@ -664,12 +858,14 @@
                     datasets: [{
                         label: 'Общие расходы (сум)',
                         data: monthlyTotals,
-                        backgroundColor: '#4a90e2'
+                        backgroundColor: '#4a90e2',
+                        borderRadius: 5
                     }]
                 },
                 options: {
+                    ...commonOptions,
                     plugins: { 
-                        title: { display: true, text: `Общие расходы по месяцам (${year})` },
+                        title: { display: false, text: `Общие расходы по месяцам (${year})`, font: { size: 16 } },
                         datalabels: barLabels,
                         tooltip: tooltipConfig
                     }
@@ -693,15 +889,19 @@
                     datasets: [{
                         data: costs,
                         backgroundColor: Object.values(RESOURCE_COLORS),
+                        borderRadius: 10,
+                        borderWidth: 2,
+                        borderColor: '#fff',
                         ...pieHoverOptions
                     }]
                 },
                 options: {
-                    layout: { padding: 20 },
+                    ...commonOptions,
                     plugins: { 
-                        title: { display: true, text: `Расходы за ${MONTH_NAMES[month]} ${year}` },
+                        title: { display: false, text: `Расходы за ${MONTH_NAMES[month]} ${year}`, font: { size: 16 } },
                         datalabels: pieLabels,
-                        tooltip: tooltipConfig
+                        tooltip: tooltipConfig,
+                        legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } }
                     }
                 }
             };
@@ -718,12 +918,14 @@
                     datasets: [{
                         label: `${RESOURCE_LABELS[resource]} (сум)`,
                         data: data,
-                        backgroundColor: RESOURCE_COLORS[resource]
+                        backgroundColor: RESOURCE_COLORS[resource],
+                        borderRadius: 5
                     }]
                 },
                 options: {
+                    ...commonOptions,
                     plugins: { 
-                        title: { display: true, text: `Стоимость: ${RESOURCE_LABELS[resource]} (${year})` },
+                        title: { display: false, text: `Стоимость: ${RESOURCE_LABELS[resource]} (${year})`, font: { size: 16 } },
                         datalabels: barLabels,
                         tooltip: tooltipConfig
                     }
@@ -742,12 +944,14 @@
                     datasets: [{
                         label: `${RESOURCE_LABELS[resource]} (объём)`,
                         data: data,
-                        backgroundColor: RESOURCE_COLORS[resource]
+                        backgroundColor: RESOURCE_COLORS[resource],
+                        borderRadius: 5
                     }]
                 },
                 options: {
+                    ...commonOptions,
                     plugins: { 
-                        title: { display: true, text: `Потребление: ${RESOURCE_LABELS[resource]} (${year})` },
+                        title: { display: false, text: `Потребление: ${RESOURCE_LABELS[resource]} (${year})`, font: { size: 16 } },
                         datalabels: barLabels,
                         tooltip: tooltipConfig
                     }
