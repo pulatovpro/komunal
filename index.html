@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Учёт коммунальных расходов</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <style>
+        :root {
+            --primary-color: #4a90e2;
+            --bg-color: #f5f7fa;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --border-radius: 12px;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: var(--card-bg);
+            padding: 1rem;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            background-color: #e0e0e0;
+            color: var(--text-color);
+        }
+
+        .btn.active {
+            background-color: var(--primary-color);
+            color: white;
+            box-shadow: 0 2px 4px rgba(74, 144, 226, 0.3);
+        }
+
+        .btn:hover:not(.active) {
+            background-color: #d0d0d0;
+        }
+
+        main {
+            flex: 1;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .screen {
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Controls */
+        .controls-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        select {
+            padding: 0.8rem;
+            border-radius: var(--border-radius);
+            border: 1px solid #ddd;
+            font-size: 1rem;
+            background: white;
+            cursor: pointer;
+        }
+
+        /* Input Screen Styles */
+        .month-selector {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            background: var(--card-bg);
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+        }
+
+        .month-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .input-grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .input-card {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .input-card label {
+            font-weight: 600;
+            color: #555;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .input-card input {
+            padding: 0.8rem;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .input-card input:focus {
+            border-color: var(--primary-color);
+        }
+
+        .price-info {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 0.2rem;
+        }
+        
+        .calc-info {
+            font-size: 0.9rem;
+            color: var(--primary-color);
+            font-weight: bold;
+            text-align: right;
+        }
+
+        /* Charts Screen Styles */
+        .chart-controls-container {
+            background: var(--card-bg);
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .chart-display-area {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            min-height: 400px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Responsive */
+        @media (min-width: 600px) {
+            .input-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="nav-buttons">
+        <button class="btn active" onclick="switchScreen('input')">Ввод данных</button>
+        <button class="btn" onclick="switchScreen('charts')">Диаграммы</button>
+    </div>
+</header>
+
+<main>
+    <!-- Screen 1: Data Entry -->
+    <div id="input-screen" class="screen active">
+        
+        <div class="controls-row">
+            <label for="input-year-select" style="font-weight: bold;">Год:</label>
+            <select id="input-year-select" onchange="changeYear()">
+                <!-- Generated 2025-2100 -->
+            </select>
+        </div>
+
+        <div class="month-selector">
+            <button class="btn" onclick="changeMonth(-1)">&#8592;</button>
+            <div class="month-title" id="current-month-display">Январь</div>
+            <button class="btn" onclick="changeMonth(1)">&#8594;</button>
+        </div>
+
+        <div class="input-grid">
+            <!-- Gas -->
+            <div class="input-card">
+                <label>Газ (м³) <span>🔥</span></label>
+                <input type="number" id="input-gas" placeholder="Показания счетчика" oninput="saveData()">
+                <div class="price-info">Цена: 1500 сум/ед.</div>
+                <div class="calc-info" id="calc-gas">Потребление: 0</div>
+            </div>
+
+            <!-- Cold Water -->
+            <div class="input-card">
+                <label>Холодная вода (м³) <span>💧</span></label>
+                <input type="number" id="input-coldWater" placeholder="Показания счетчика" oninput="saveData()">
+                <div class="price-info">Цена: 1500 сум/ед.</div>
+                <div class="calc-info" id="calc-coldWater">Потребление: 0</div>
+            </div>
+
+            <!-- Hot Water -->
+            <div class="input-card">
+                <label>Горячая вода (м³) <span>🚿</span></label>
+                <input type="number" id="input-hotWater" placeholder="Показания счетчика" oninput="saveData()">
+                <div class="price-info">Цена: 8000 сум/ед.</div>
+                <div class="calc-info" id="calc-hotWater">Потребление: 0</div>
+            </div>
+
+            <!-- Electricity -->
+            <div class="input-card">
+                <label>Электричество (кВт⋅ч) <span>⚡</span></label>
+                <input type="number" id="input-electricity" placeholder="Показания счетчика" oninput="saveData()">
+                <div class="price-info">Цена: 1000 сум/ед.</div>
+                <div class="calc-info" id="calc-electricity">Потребление: 0</div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 2rem; text-align: center; color: #666; font-size: 0.9rem;">
+            * Вводите <strong>текущие показания</strong> счётчика. Расход считается автоматически (Текущее - Предыдущее).
+        </div>
+    </div>
+
+    <!-- Screen 2: Charts -->
+    <div id="charts-screen" class="screen">
+        
+        <div class="chart-controls-container">
+            <!-- 1. Chart Type Selector (Always Visible) -->
+            <select id="chart-type-select" onchange="updateChartUI()">
+                <option value="1">1. Годовые расходы (Круговая)</option>
+                <option value="2">2. Расходы по месяцам (Столбчатая)</option>
+                <option value="3">3. Расходы за месяц (Круговая)</option>
+                <option value="4">4. Динамика стоимости ресурса (Столбчатая)</option>
+                <option value="5">5. Динамика потребления ресурса (Столбчатая)</option>
+            </select>
+
+            <!-- 2. Year Selector (Almost Always Visible) -->
+            <select id="chart-year-select" onchange="renderCurrentChart()">
+                <!-- Generated -->
+            </select>
+
+            <!-- 3. Month Selector (Visible only for Chart 3) -->
+            <select id="chart-month-select" class="hidden" onchange="renderCurrentChart()">
+                <!-- Generated -->
+            </select>
+
+            <!-- 4. Resource Selector (Visible only for Chart 4 & 5) -->
+            <select id="chart-resource-select" class="hidden" onchange="renderCurrentChart()">
+                <option value="gas">Газ</option>
+                <option value="coldWater">Холодная вода</option>
+                <option value="hotWater">Горячая вода</option>
+                <option value="electricity">Электричество</option>
+            </select>
+        </div>
+
+        <div class="chart-display-area">
+            <canvas id="mainChart"></canvas>
+        </div>
+
+    </div>
+</main>
+
+<script>
+    // --- Constants & Config ---
+    const PRICES = {
+        gas: 1500,
+        coldWater: 1500,
+        hotWater: 8000,
+        electricity: 1000
+    };
+
+    const MONTH_NAMES = [
+        "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+        "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"
+    ];
+
+    const RESOURCE_LABELS = {
+        gas: "Газ",
+        coldWater: "Хол. вода",
+        hotWater: "Гор. вода",
+        electricity: "Электричество"
+    };
+
+    const RESOURCE_COLORS = {
+        gas: '#FF6384',
+        coldWater: '#36A2EB',
+        hotWater: '#FF9F40',
+        electricity: '#FFCD56'
+    };
+
+    // --- State Management ---
+    let currentInputYear = 2025;
+    let currentInputMonth = 0; // 0 = Jan
+    let appData = {}; // Structure: { "2025": { "0": { gas: 100, ... } } }
+
+    // --- Initialization ---
+    window.onload = function() {
+        // Register DataLabels plugin
+        Chart.register(ChartDataLabels);
+
+        initYearSelectors();
+        initMonthSelectors();
+        loadData();
+        
+        // Set default dates
+        const now = new Date();
+        const year = now.getFullYear();
+        if (year >= 2025 && year <= 2100) currentInputYear = year;
+        currentInputMonth = now.getMonth();
+
+        // Sync selectors
+        document.getElementById('input-year-select').value = currentInputYear;
+        document.getElementById('chart-year-select').value = currentInputYear;
+        document.getElementById('chart-month-select').value = currentInputMonth;
+
+        renderInputScreen();
+        updateChartUI(); // Prepare chart screen state
+    };
+
+    function initYearSelectors() {
+        const inputSel = document.getElementById('input-year-select');
+        const chartSel = document.getElementById('chart-year-select');
+        inputSel.innerHTML = '';
+        chartSel.innerHTML = '';
+
+        for (let y = 2025; y <= 2100; y++) {
+            const opt1 = document.createElement('option');
+            opt1.value = y;
+            opt1.innerText = y;
+            inputSel.appendChild(opt1);
+
+            const opt2 = document.createElement('option');
+            opt2.value = y;
+            opt2.innerText = y;
+            chartSel.appendChild(opt2);
+        }
+    }
+
+    function initMonthSelectors() {
+        const sel = document.getElementById('chart-month-select');
+        sel.innerHTML = '';
+        MONTH_NAMES.forEach((name, idx) => {
+            const opt = document.createElement('option');
+            opt.value = idx;
+            opt.innerText = name;
+            sel.appendChild(opt);
+        });
+    }
+
+    // --- Data Logic ---
+
+    function loadData() {
+        const stored = localStorage.getItem('utilityDataV2');
+        if (stored) {
+            appData = JSON.parse(stored);
+        }
+    }
+
+    function saveData() {
+        // Get values from inputs
+        const gas = parseFloat(document.getElementById('input-gas').value);
+        const cold = parseFloat(document.getElementById('input-coldWater').value);
+        const hot = parseFloat(document.getElementById('input-hotWater').value);
+        const elec = parseFloat(document.getElementById('input-electricity').value);
+
+        // Ensure year structure exists
+        if (!appData[currentInputYear]) appData[currentInputYear] = {};
+        
+        // Save readings (allow null/NaN if empty to indicate no data)
+        appData[currentInputYear][currentInputMonth] = {
+            gas: isNaN(gas) ? null : gas,
+            coldWater: isNaN(cold) ? null : cold,
+            hotWater: isNaN(hot) ? null : hot,
+            electricity: isNaN(elec) ? null : elec
+        };
+
+        localStorage.setItem('utilityDataV2', JSON.stringify(appData));
+        updateCalcDisplay(); // Update the "Consumption: X" text
+    }
+
+    function getReading(year, month, resource) {
+        try {
+            return appData[year][month][resource];
+        } catch (e) {
+            return null;
+        }
+    }
+
+    // Core Logic: Calculate Consumption (Current - Previous)
+    function calculateConsumption(year, month, resource) {
+        const current = getReading(year, month, resource);
+        if (current === null) return 0;
+
+        // Find previous month
+        let prevYear = year;
+        let prevMonth = month - 1;
+        if (prevMonth < 0) {
+            prevMonth = 11;
+            prevYear = year - 1;
+        }
+
+        const prev = getReading(prevYear, prevMonth, resource);
+        
+        if (prev === null) {
+            // No previous history -> Consumption is 0 (or strictly speaking unknown, but 0 is safer for charts)
+            return 0;
+        }
+
+        let diff = current - prev;
+        return diff > 0 ? diff : 0; // Negative consumption impossible (meter reset logic not in scope)
+    }
+
+    // --- Input Screen UI ---
+
+    function changeYear() {
+        currentInputYear = parseInt(document.getElementById('input-year-select').value);
+        renderInputScreen();
+    }
+
+    function changeMonth(delta) {
+        currentInputMonth += delta;
+        if (currentInputMonth < 0) {
+            currentInputMonth = 11;
+            currentInputYear--;
+            // Sync year selector if it changes
+            if (currentInputYear < 2025) {
+                currentInputYear = 2025; // Boundary
+                currentInputMonth = 0;
+            }
+        } else if (currentInputMonth > 11) {
+            currentInputMonth = 0;
+            currentInputYear++;
+            if (currentInputYear > 2100) {
+                currentInputYear = 2100;
+                currentInputMonth = 11;
+            }
+        }
+        
+        // Update Year Selector UI
+        document.getElementById('input-year-select').value = currentInputYear;
+        renderInputScreen();
+    }
+
+    function renderInputScreen() {
+        document.getElementById('current-month-display').innerText = MONTH_NAMES[currentInputMonth];
+
+        const data = (appData[currentInputYear] && appData[currentInputYear][currentInputMonth]) || {};
+
+        document.getElementById('input-gas').value = data.gas !== null && data.gas !== undefined ? data.gas : '';
+        document.getElementById('input-coldWater').value = data.coldWater !== null && data.coldWater !== undefined ? data.coldWater : '';
+        document.getElementById('input-hotWater').value = data.hotWater !== null && data.hotWater !== undefined ? data.hotWater : '';
+        document.getElementById('input-electricity').value = data.electricity !== null && data.electricity !== undefined ? data.electricity : '';
+
+        updateCalcDisplay();
+    }
+
+    function updateCalcDisplay() {
+        ['gas', 'coldWater', 'hotWater', 'electricity'].forEach(res => {
+            const cons = calculateConsumption(currentInputYear, currentInputMonth, res);
+            document.getElementById(`calc-${res}`).innerText = `Потребление: ${cons.toFixed(2)}`;
+        });
+    }
+
+    // --- Charts Screen UI ---
+
+    function switchScreen(screenName) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('header .btn').forEach(b => b.classList.remove('active'));
+
+        document.getElementById(screenName + '-screen').classList.add('active');
+        
+        // Highlight button
+        const btnIndex = screenName === 'input' ? 0 : 1;
+        document.querySelectorAll('header .btn')[btnIndex].classList.add('active');
+
+        if (screenName === 'charts') {
+            renderCurrentChart();
+        }
+    }
+
+    let chartInstance = null;
+
+    function updateChartUI() {
+        const type = document.getElementById('chart-type-select').value;
+        const yearSel = document.getElementById('chart-year-select');
+        const monthSel = document.getElementById('chart-month-select');
+        const resSel = document.getElementById('chart-resource-select');
+
+        // Reset visibility
+        yearSel.classList.remove('hidden'); // Always needed
+        monthSel.classList.add('hidden');
+        resSel.classList.add('hidden');
+
+        // Logic based on type
+        // 1: Pie Yearly (Year)
+        // 2: Bar Monthly Total (Year)
+        // 3: Pie Monthly Dist (Year + Month)
+        if (type === '3') {
+            monthSel.classList.remove('hidden');
+        }
+        // 4: Bar Res Cost (Year + Res)
+        // 5: Bar Res Vol (Year + Res)
+        if (type === '4' || type === '5') {
+            resSel.classList.remove('hidden');
+        }
+
+        renderCurrentChart();
+    }
+
+    function renderCurrentChart() {
+        const ctx = document.getElementById('mainChart').getContext('2d');
+        if (chartInstance) chartInstance.destroy();
+
+        const type = document.getElementById('chart-type-select').value;
+        const year = parseInt(document.getElementById('chart-year-select').value);
+        const month = parseInt(document.getElementById('chart-month-select').value);
+        const resource = document.getElementById('chart-resource-select').value;
+
+        // Prepare data helpers
+        const getMonthlyConsumptions = (res) => {
+            let data = [];
+            for (let m = 0; m < 12; m++) {
+                data.push(calculateConsumption(year, m, res));
+            }
+            return data;
+        };
+
+        const getMonthlyCosts = (res) => {
+            return getMonthlyConsumptions(res).map(vol => vol * PRICES[res]);
+        };
+
+        // --- Visual Configurations ---
+        const tooltipConfig = {
+            enabled: true,
+            backgroundColor: 'rgba(33, 33, 33, 0.95)',
+            titleFont: { size: 16, family: "'Segoe UI', sans-serif", weight: '600' },
+            bodyFont: { size: 14, family: "'Segoe UI', sans-serif" },
+            padding: 12,
+            cornerRadius: 8,
+            displayColors: true,
+            boxPadding: 6,
+            caretPadding: 6,
+            caretSize: 8,
+            animation: { duration: 150 }
+        };
+
+        const pieHoverOptions = {
+            hoverOffset: 20,
+            hoverBorderWidth: 0
+        };
+
+        // --- Datalabels Configuration ---
+        const pieLabels = {
+            color: '#fff',
+            font: { weight: 'bold', size: 14 },
+            formatter: (value) => value > 0 ? Math.round(value) : ''
+        };
+
+        const barLabels = {
+            anchor: 'center',
+            align: 'center',
+            rotation: -90,
+            color: (ctx) => {
+                const color = ctx.dataset.backgroundColor;
+                return (color === '#FFCD56') ? '#333' : '#fff';
+            },
+            font: { weight: 'bold' },
+            formatter: (value) => value > 0 ? Math.round(value) : ''
+        };
+
+        let config = {};
+
+        // --- Chart 1: Yearly Expenses (Pie) ---
+        if (type === '1') {
+            let totals = { gas: 0, coldWater: 0, hotWater: 0, electricity: 0 };
+            
+            Object.keys(totals).forEach(key => {
+                const costs = getMonthlyCosts(key);
+                totals[key] = costs.reduce((a, b) => a + b, 0);
+            });
+
+            config = {
+                type: 'pie',
+                data: {
+                    labels: Object.values(RESOURCE_LABELS),
+                    datasets: [{
+                        data: [totals.gas, totals.coldWater, totals.hotWater, totals.electricity],
+                        backgroundColor: Object.values(RESOURCE_COLORS),
+                        ...pieHoverOptions
+                    }]
+                },
+                options: {
+                    layout: { padding: 20 },
+                    plugins: { 
+                        title: { display: true, text: `Годовые расходы за ${year} г.` },
+                        datalabels: pieLabels,
+                        tooltip: tooltipConfig
+                    }
+                }
+            };
+        }
+        
+        // --- Chart 2: Monthly Total Expenses (Bar) ---
+        else if (type === '2') {
+            let monthlyTotals = new Array(12).fill(0);
+            ['gas', 'coldWater', 'hotWater', 'electricity'].forEach(res => {
+                const costs = getMonthlyCosts(res);
+                costs.forEach((val, idx) => monthlyTotals[idx] += val);
+            });
+
+            config = {
+                type: 'bar',
+                data: {
+                    labels: MONTH_NAMES,
+                    datasets: [{
+                        label: 'Общие расходы (сум)',
+                        data: monthlyTotals,
+                        backgroundColor: '#4a90e2'
+                    }]
+                },
+                options: {
+                    plugins: { 
+                        title: { display: true, text: `Общие расходы по месяцам (${year})` },
+                        datalabels: barLabels,
+                        tooltip: tooltipConfig
+                    }
+                }
+            };
+        }
+
+        // --- Chart 3: Monthly Distribution (Pie) ---
+        else if (type === '3') {
+            const costs = [
+                calculateConsumption(year, month, 'gas') * PRICES.gas,
+                calculateConsumption(year, month, 'coldWater') * PRICES.coldWater,
+                calculateConsumption(year, month, 'hotWater') * PRICES.hotWater,
+                calculateConsumption(year, month, 'electricity') * PRICES.electricity
+            ];
+
+            config = {
+                type: 'pie',
+                data: {
+                    labels: Object.values(RESOURCE_LABELS),
+                    datasets: [{
+                        data: costs,
+                        backgroundColor: Object.values(RESOURCE_COLORS),
+                        ...pieHoverOptions
+                    }]
+                },
+                options: {
+                    layout: { padding: 20 },
+                    plugins: { 
+                        title: { display: true, text: `Расходы за ${MONTH_NAMES[month]} ${year}` },
+                        datalabels: pieLabels,
+                        tooltip: tooltipConfig
+                    }
+                }
+            };
+        }
+
+        // --- Chart 4: Resource Cost Dynamics (Bar) ---
+        else if (type === '4') {
+            const data = getMonthlyCosts(resource);
+
+            config = {
+                type: 'bar',
+                data: {
+                    labels: MONTH_NAMES,
+                    datasets: [{
+                        label: `${RESOURCE_LABELS[resource]} (сум)`,
+                        data: data,
+                        backgroundColor: RESOURCE_COLORS[resource]
+                    }]
+                },
+                options: {
+                    plugins: { 
+                        title: { display: true, text: `Стоимость: ${RESOURCE_LABELS[resource]} (${year})` },
+                        datalabels: barLabels,
+                        tooltip: tooltipConfig
+                    }
+                }
+            };
+        }
+
+        // --- Chart 5: Resource Volume Dynamics (Bar) ---
+        else if (type === '5') {
+            const data = getMonthlyConsumptions(resource);
+
+            config = {
+                type: 'bar',
+                data: {
+                    labels: MONTH_NAMES,
+                    datasets: [{
+                        label: `${RESOURCE_LABELS[resource]} (объём)`,
+                        data: data,
+                        backgroundColor: RESOURCE_COLORS[resource]
+                    }]
+                },
+                options: {
+                    plugins: { 
+                        title: { display: true, text: `Потребление: ${RESOURCE_LABELS[resource]} (${year})` },
+                        datalabels: barLabels,
+                        tooltip: tooltipConfig
+                    }
+                }
+            };
+        }
+
+        chartInstance = new Chart(ctx, config);
+    }
+
+</script>
+
+</body>
+</html>
